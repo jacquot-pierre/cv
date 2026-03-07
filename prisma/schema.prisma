@@ -1,0 +1,31 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  title       String   // Intitulé du poste ou projet
+  company     String?  // Nom de l'entreprise (optionnel pour les projets persos)
+  description String   // Description détaillée
+  startDate   DateTime // Date de début
+  endDate     DateTime?// Date de fin (null si en cours)
+  type        String   // "PRO" ou "PERSO"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  tags        Tag[]    // Relation Many-to-Many implicite avec Tag
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique // ex: "Docker", "Ansible", "Next.js"
+  
+  experiences Experience[] // Relation Many-to-Many implicite
+}
