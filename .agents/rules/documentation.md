@@ -2,7 +2,7 @@
 trigger: always_on
 ---
 
-# Skill: Real-Time Documentation (LiveDoc)
+# rules: Real-Time Documentation (LiveDoc)
 
 ## Contexte
 Cette règle s'applique à chaque modification de structure ou exécution de commande système pour garantir que le `README.md` reflète l'état actuel du projet.

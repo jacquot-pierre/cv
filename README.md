@@ -74,6 +74,13 @@ Pour ce projet précis (un CV où seul TOI peux administrer), **SQLite** est red
 - **Prisma** : Lit écrire et migre cette donnée en fournissant une API parfaite pour notre code.
 - **Next.js (Server Components/API Routes)** : Interroge Prisma de manière sécurisée (côté serveur) pour envoyer les données propres au navigateur.
 
+### L'importance des Driver Adapters (Prisma 7+)
+Historiquement, la chaîne de connexion (ex: `DATABASE_URL`) était placée dans `schema.prisma`. Depuis **Prisma 7**, cette approche a évolué. Le bloc `datasource` du schéma ne contient plus l'URL. 
+À la place, on utilise des **Driver Adapters**. Prisma s'interface avec un "driver" écrit dans notre même langage (ex: `@libsql/client` pour SQLite) qu'on configure et injecte directement au moment d'instancier `PrismaClient`.
+**Pourquoi ce changement ?**
+Il permet un déploiement optimal dans des environnements modernes dits "Edge" ou "Serverless" (comme ceux de Vercel ou Cloudflare) car on utilise des drivers JavaScript natifs ou HTTP légers, et non plus des binaires lourds spécifiques au système d'exploitation. 
+Si on oublie cet adapter, Prisma renverra l'erreur `PrismaClientInitializationError: PrismaClient needs to be constructed with a non-empty, valid PrismaClientOptions`.
+
 ### Commandes Prisma (Cycle de Vie de la Base de Données)
 
 Voici les commandes que nous avons utilisées pour mettre en place la base de données. En tant que DevOps, vois cela comme ton outil de provisionnement (Ansible/Terraform) mais pour le schéma de données :
@@ -81,3 +88,67 @@ Voici les commandes que nous avons utilisées pour mettre en place la base de do
 - `npx prisma init --datasource-provider sqlite` : Cette commande initialise Prisma dans le projet. Elle crée le dossier `/prisma`, le fichier `schema.prisma` (où l'on déclare l'architecture de la DB) et prépare le terrain pour utiliser SQLite.
 - `npx prisma generate` : À lancer **à chaque fois** que le fichier `schema.prisma` est modifié. Cela lit le schéma et génère le client Prisma (le code TypeScript `PrismaClient` que Next.js va utiliser pour faire les requêtes). C'est ce qui garantit le typage fort de la base de données.
 - `npx prisma migrate dev --name <nom_du_changement>` : C'est l'équivalent d'un `terraform apply`. Prisma compare le fichier `schema.prisma` avec l'état actuel de la base de données `dev.db`, génère le code SQL de migration (ex: `CREATE TABLE`) et l'applique à la base. Ici, on l'a lancé avec le nom `init` pour la toute première création de notre schéma (Expériences et Tags).
+
+---
+
+## 📚 Pédagogie : Les API CRUD dans Next.js
+
+### Qu'est-ce qu'une API CRUD ?
+**API** signifie *Application Programming Interface*. C'est un pont qui permet à deux programmes informatiques de communiquer entre eux (ici, notre interface web et notre base de données).
+
+**CRUD** est un acronyme représentant les quatre opérations de base pour gérer n'importe quel type de donnée (comme nos expériences ou nos tags) :
+- **C**reate (Créer) : Ajouter une nouvelle donnée (ex: un POST request).
+- **R**ead (Lire) : Consulter une donnée existante (ex: un GET request).
+- **U**pdate (Mettre à jour) : Modifier une donnée existante (ex: un PUT ou PATCH request).
+- **D**elete (Supprimer) : Effacer une donnée (ex: un DELETE request).
+
+### Comment ça marche dans Next.js (App Router) ?
+Auparavant, on devait créer un serveur backend séparé (comme du Python/Flask ou Node.js/Express) juste pour ces requêtes. Avec le **App Router** de Next.js, on utilise ce qu'on appelle les **Route Handlers**.
+
+Il suffit de créer un fichier nommé `route.ts` dans le dossier `src/app/api/...`. Par exemple :
+- `/src/app/api/experiences/route.ts`
+- `/src/app/api/experiences/[id]/route.ts` (Le `[id]` est une route dynamique, il s'adaptera à l'ID de l'expérience, comme `/api/experiences/123`).
+
+À l'intérieur de ces fichiers, on exporte des fonctions nommées `GET`, `POST`, `PUT`, ou `DELETE`. 
+Ces fonctions s'exécutent de façon 100% sécurisée sur le serveur (elles n'atteignent jamais le navigateur de l'utilisateur). C'est depuis ces fonctions que l'on appelle **Prisma** pour interagir avec la base de données, avant de renvoyer la réponse au format JSON vers le client.
+
+---
+
+## 🔧 Documentation : Nos API Routes & Exemples d'utilisation
+
+Pour interagir avec notre base, Next.js expose nos endpoints sur `http://localhost:3000`. Voici comment les tester en ligne de commande (via `curl` ou dans un outil comme Postman) :
+
+### 1. `GET /api/experiences`
+- **Rôle :** Récupérer la liste complète des expériences triées par date (les plus récentes d'abord) + les tags associés.
+- **Exemple (cURL) :**
+  ```bash
+  curl -s -X GET http://localhost:3000/api/experiences | jq
+  ```
+
+### 2. `POST /api/experiences`
+- **Rôle :** Créer une nouvelle expérience (et associer optionnellement de nouveaux tags).
+- **Body JSON requis :** `title`, `description`, `startDate`, `type` ("PRO" ou "PERSO"). `company`, `endDate`, et `tags` (tableau de chaînes) sont optionnels.
+- **Exemple (cURL) :**
+  ```bash
+  curl -X POST http://localhost:3000/api/experiences \
+  -H "Content-Type: application/json" \
+  -d '{
+        "title": "Ingénieur DevOps",
+        "company": "Entreprise Tech",
+        "description": "Mise en place de CI/CD et k8s.",
+        "startDate": "2024-01-01T00:00:00Z",
+        "type": "PRO",
+        "tags": ["Docker", "Kubernetes"]
+      }'
+  ```
+
+### 3. `GET /api/tags`
+- **Rôle :** Lister tous les tags existants par ordre alphabétique (parfait pour l'autocomplétion ou les filtres publics).
+- **Exemple (cURL) :**
+  ```bash
+  curl -s -X GET http://localhost:3000/api/tags | jq
+  ```
+
+> [!TIP]
+> Pour tester les routes spécifiques comme `GET /api/experiences/[id]`, supprimez ou modifiez (PUT) une expérience, vous aurez besoin de l'ID généré par prisma renvoyé lors d'un `POST` ou d'un `GET /api/experiences`.
+> Exemple : `curl -X DELETE http://localhost:3000/api/experiences/12345678abcdef`
