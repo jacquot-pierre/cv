@@ -25,8 +25,11 @@ En tant que DevOps, la gestion de l'infrastructure et de la livraison est famili
 Voici la structure de base générée par Next.js, avec une configuration "App Router" et "Tailwind CSS" :
 
 - 📂 `/src/app` : Cœur de l'application Next.js (App Router). Contient la logique de routage, les pages (`page.tsx`) et la mise en page (`layout.tsx`).
+- 📂 `/src/components` : Briques d'interface réutilisables (Client Components avec état interactif, boutons, etc.).
+- 📂 `/src/lib` : Utilitaires et connexions externes (ex: l'instanciation de Prisma `prisma.ts`).
 - 📂 `/public` : Contient les assets statiques publics (images, polices, favicons) qui sont servis directement sans traitement.
 - 📂 `/docs` : Contient la documentation du projet (ex: le PRD - Cahier des charges).
+- 📄 `/learning.md` : Documentation technique et pédagogique détaillée sur les choix architecturaux (Next.js, Prisma, etc).
 
 ---
 
